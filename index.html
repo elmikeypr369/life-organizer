@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Life Organizer – Weekly Planner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root {
+  --bg: #f4f6f8;
+  --card: #ffffff;
+  --border: #e0e0e0;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 3fr 1fr; /* 75% calendar, 25% controls */
+  height: 100vh;
+}
+
+/* ================= CALENDAR ================= */
+.calendar {
+  padding: 10px;
+  overflow: auto;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 60px repeat(7, 1fr);
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+}
+.header div {
+  padding: 8px;
+  text-align: center;
+  font-weight: bold;
+  border-right: 1px solid var(--border);
+}
+.header div:last-child { border-right: none; }
+
+.grid {
+  display: grid;
+  grid-template-columns: 60px repeat(7, 1fr);
+}
+
+.time {
+  height: 60px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  padding: 4px;
+  background: #fafafa;
+}
+
+.cell {
+  height: 60px;
+  border: 1px solid var(--border);
+  position: relative;
+}
+
+.event {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  border-radius: 6px;
+  padding: 4px;
+  font-size: 11px;
+  color: #000;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+/* ================= SIDEBAR ================= */
+.sidebar {
+  background: var(--card);
+  padding: 15px;
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+h2, h3 { margin-top: 0; }
+
+input, select, textarea, button {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 8px;
+}
+
+button {
+  background: #000;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+.small {
+  font-size: 12px;
+  color: #555;
+}
+
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ CALENDAR ============ -->
+  <div class="calendar">
+    <div class="header" id="days"></div>
+    <div class="grid" id="calendar"></div>
+  </div>
+
+  <!-- ============ SIDEBAR ============ -->
+  <div class="sidebar">
+    <h2>Life Organizer</h2>
+    <p class="small">Add classes, exams, practices, sleep, study, hangouts — everything.</p>
+
+    <h3>Add / Edit Event</h3>
+    <input id="title" placeholder="Title (Math Class, SAT Study, Tennis Practice)">
+
+    <select id="category">
+      <option value="#90caf9">School / Class</option>
+      <option value="#f48fb1">Exam</option>
+      <option value="#a5d6a7">Study</option>
+      <option value="#ffcc80">Practice / Sport</option>
+      <option value="#ce93d8">Tournament</option>
+      <option value="#fff59d">Free Time / Hangout</option>
+      <option value="#b0bec5">Sleep</option>
+    </select>
+
+    <select id="priority">
+      <option>Normal Task</option>
+      <option>High Priority</option>
+    </select>
+
+    <label class="small">Day of week</label>
+    <select id="day">
+      <option value="0">Monday</option>
+      <option value="1">Tuesday</option>
+      <option value="2">Wednesday</option>
+      <option value="3">Thursday</option>
+      <option value="4">Friday</option>
+      <option value="5">Saturday</option>
+      <option value="6">Sunday</option>
+    </select>
+
+    <label class="small">Start hour</label>
+    <input id="start" type="number" min="0" max="23" placeholder="e.g. 9">
+
+    <label class="small">Duration (hours)</label>
+    <input id="duration" type="number" min="1" max="12" placeholder="e.g. 2">
+
+    <button onclick="addEvent()">Save Event</button>
+
+    <hr>
+    <p class="small">Click an event in the calendar to delete it.</p>
+  </div>
+</div>
+
+<script>
+const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const hours = Array.from({length:24},(_,i)=>i);
+let events = JSON.parse(localStorage.getItem("weeklyEvents") || "[]");
+
+const daysHeader = document.getElementById("days");
+const calendar = document.getElementById("calendar");
+
+daysHeader.innerHTML = '<div></div>' + days.map(d=>`<div>${d}</div>`).join('');
+
+function drawGrid() {
+  calendar.innerHTML = "";
+  hours.forEach(h => {
+    calendar.innerHTML += `<div class="time">${h}:00</div>`;
+    days.forEach((_,d)=>{
+      calendar.innerHTML += `<div class="cell" data-day="${d}" data-hour="${h}"></div>`;
+    });
+  });
+}
+
+function renderEvents() {
+  document.querySelectorAll('.event').forEach(e=>e.remove());
+  events.forEach(e=>{
+    const cell = document.querySelector(`.cell[data-day='${e.day}'][data-hour='${e.start}']`);
+    if (!cell) return;
+    const div = document.createElement('div');
+    div.className = 'event';
+    div.style.background = e.color;
+    div.style.height = `${e.duration*60-4}px`;
+    div.innerHTML = `<strong>${e.title}</strong><br>${e.priority}`;
+    div.onclick = ()=>{ if(confirm('Delete this event?')){ events = events.filter(x=>x.id!==e.id); save(); } };
+    cell.appendChild(div);
+  });
+}
+
+function save() {
+  localStorage.setItem("weeklyEvents", JSON.stringify(events));
+  renderEvents();
+}
+
+function addEvent() {
+  if(!title.value || start.value==="" || duration.value===""){
+    alert("Please fill title, start time, and duration");
+    return;
+  }
+  events.push({
+    id: Date.now(),
+    title: title.value,
+    day: +day.value,
+    start: +start.value,
+    duration: +duration.value,
+    color: category.value,
+    priority: priority.value
+  });
+  save();
+}
+
+drawGrid();
+renderEvents();
+</script>
+
+</body>
+</html>
